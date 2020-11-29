@@ -15,7 +15,7 @@
 
 char *IDS = NULL;
 
-const size_t SECS = 60; //sets secs in minute to speed up app
+const size_t SECS = 10; //sets secs in minute to speed up app
 
 static void init_ids ();
 
@@ -68,6 +68,7 @@ typedef struct Rabbit{
 	uint id;
 	// 0 - male, 1 - female
 	int sex;
+	int pregnant;
 	time_t birth_time;
 	// inited as birth_time + SECS * 2; for females updates after every birth
 	time_t next_child_time;
@@ -84,6 +85,7 @@ static Rabbit make_rabbit (time_t birth_time, uint id){
 	new_rabbit.id = id ? id : gen_id();
 	IDS[new_rabbit.id] = 1; //kostyl' ebaniy no mne poh
 	new_rabbit.sex = rand() % 2;
+	new_rabbit.pregnant = 0;
 	new_rabbit.birth_time = birth_time;
 	new_rabbit.next_child_time = birth_time + SECS * 2;
 
@@ -248,7 +250,6 @@ static void update_state (){
 	for (int i = 0; i < nursery.capacity; i++){
 		Cage *cage = nursery.cages + i;
 		while (1){
-			int adult_male_in_cage = 0;
 			time_t least_next_child_time = curr_time;
 			int mother_pos = -1;
 			for (int j = 0; j < 10; j++){
@@ -261,12 +262,19 @@ static void update_state (){
 			if (mother_pos == -1){
 				break;
 			}
+			uint mother_id = cage->rabbits[mother_pos].id;
+			time_t mother_nct = cage->rabbits[mother_pos].next_child_time;
+			add_rabbit_in_cage(make_rabbit(least_next_child_time, 0), cage);
+			add_rabbit_in_cage(make_rabbit(least_next_child_time, 0), cage);
+			if (cage->rabbits[mother_pos].id != mother_id ||
+			    cage->rabbits[mother_pos].next_child_time != mother_nct){
+				break;
+			}
+			cage->rabbits[mother_pos].pregnant = 0;
 			for (int j = 0; j < 10; j++){
 				if (cage->positions[j] && !cage->rabbits[j].sex &&
 				    cage->rabbits[j].next_child_time <= least_next_child_time){
-					time_t new_birth_time = least_next_child_time;
-					add_rabbit_in_cage(make_rabbit(new_birth_time, 0), cage);
-					add_rabbit_in_cage(make_rabbit(new_birth_time, 0), cage);
+					cage->rabbits[mother_pos].pregnant = 1;
 					break;
 				}
 			}
